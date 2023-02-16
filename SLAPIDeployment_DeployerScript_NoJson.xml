@@ -1,0 +1,108 @@
+<DMSScript options="272">
+  <Name>SLAPIDeployment_DeployerScript_NoJson</Name>
+  <Description>Deploys an API with the JSON option disabled.</Description>
+  <Type>Automation</Type>
+  <Author>SKYLINE2\ThomasGH</Author>
+  <CheckSets>FALSE</CheckSets>
+  <Folder>
+  </Folder>
+  <Protocols>
+  </Protocols>
+  <Memory>
+  </Memory>
+  <Parameters>
+    <ScriptParameter id="1" type="string" values="">
+      <Description>token</Description>
+    </ScriptParameter>
+    <ScriptParameter id="2" type="string" values="">
+      <Description>description</Description>
+    </ScriptParameter>
+    <ScriptParameter id="3" type="string" values="">
+      <Description>maxRequestsPerSecond</Description>
+    </ScriptParameter>
+    <ScriptParameter id="4" type="string" values="">
+      <Description>scriptName</Description>
+    </ScriptParameter>
+  </Parameters>
+  <Script>
+    <Exe id="5" type="csharp">
+      <Value><![CDATA[using System;
+using System.Collections.Generic;
+using Skyline.DataMiner.APITypes;
+using Skyline.DataMiner.Automation;
+using Skyline.DataMiner.Net;
+using Skyline.DataMiner.Net.APIDeployment;
+using Skyline.DataMiner.Net.Messages;
+
+namespace ApiDeployment_CreateDeployment_ParameterInput
+{
+    public class Script
+    {
+        private Engine _engine;
+
+        public void Run(Engine engine)
+        {
+            _engine = engine;
+
+            try
+            {
+                InnerRun();
+            }
+            catch (ScriptAbortException e)
+            {
+                _engine.GenerateInformation(e.ToString());
+                throw;
+            }
+            catch (Exception e)
+            {
+                _engine.GenerateInformation(e.ToString());
+            }
+        }
+
+        private void InnerRun()
+        {
+            var token = _engine.GetScriptParam("token").Value;
+            var description = _engine.GetScriptParam("description").Value;
+            var maxRequestsPerSecond = _engine.GetScriptParam("maxRequestsPerSecond").Value;
+            var scriptName = _engine.GetScriptParam("scriptName").Value;
+
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(description) || string.IsNullOrEmpty(maxRequestsPerSecond) || string.IsNullOrEmpty(scriptName))
+            {
+                _engine.GenerateInformation("Not all parameters were filled in, not creating the deployment...");
+                return;
+            }
+
+            var deployMessage = new DeployAPIMessage()
+            {
+                DeployInfo = new DeployInfo()
+                {
+                    EnableJson = false,
+                    ToDeploy = new AutomationScriptID(scriptName),
+                    Tokens = new HashSet<DeployerToken>()
+                    {
+                        new DeployerToken(token)
+                        {
+                            Description = description,
+                            MaxRequestsPerSecond = Convert.ToInt32(maxRequestsPerSecond)
+                        }
+                    }
+                }
+            };
+
+            var response = _engine.SendSLNetSingleResponseMessage(deployMessage) as DeployAPIResponseMessage;
+            if (response != null && response.TraceData.HasSucceeded())
+            {
+                _engine.GenerateInformation("Deployment seems to have succeeded");
+                return;
+            }
+
+            _engine.GenerateInformation($"Deploying has failed. TraceData: {response?.TraceData}");
+        }
+    }
+}]]></Value>
+      <Param type="ref">C:\Skyline DataMiner\Files\SLAPITypes.dll</Param>
+      <Message>
+      </Message>
+    </Exe>
+  </Script>
+</DMSScript>
