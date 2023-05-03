@@ -1,0 +1,66 @@
+<DMSScript options="272" xmlns="http://www.skyline.be/automation">
+  <Name>DOM_AutoIncrementFieldDescriptorExample</Name>
+  <Description>Creates an incrementer and adds an autoincrementing FieldDescriptor to an existing SectionDefinition.</Description>
+  <Type>Automation</Type>
+  <Author>SKYLINE2\ThomasGH</Author>
+  <CheckSets>FALSE</CheckSets>
+  <Folder>
+  </Folder>
+  <Protocols>
+  </Protocols>
+  <Memory>
+  </Memory>
+  <Parameters>
+  </Parameters>
+  <Script>
+    <Exe id="2" type="csharp">
+      <Value><![CDATA[using System;
+using System.Linq;
+using Skyline.DataMiner.Automation;
+using Skyline.DataMiner.Net.Apps.DataMinerObjectModel;
+using Skyline.DataMiner.Net.Incrementers;
+using Skyline.DataMiner.Net.Messages.SLDataGateway;
+using Skyline.DataMiner.Net.Sections;
+
+namespace DOM.AutoIncrementFieldDescriptorExample
+{
+    public class Script
+    {
+        public void Run(Engine engine)
+        {
+            const string moduleId = "rt_dm_fs_ns";
+            var sectionDefinitionName = "AllBasicFields";
+
+            // Create incrementer
+            var incrementHelper = new IncrementManagerHelper(engine.SendSLNetMessages);
+            var incrementer = incrementHelper.AutoIncrementers.Create(new AutoIncrementer { ID = Guid.NewGuid() });
+
+            // Define the FieldDescriptor
+            var fieldDescriptor = new AutoIncrementFieldDescriptor()
+            {
+                Name = "Auto-incrementing ID",
+                AutoIncrementerID = incrementer.ID,
+                FieldType = typeof(string),
+                IDFormat = "My_Custom_ID_{0}_With_Suffix"
+            };
+
+            // Get an existing SectionDefinition
+            var domHelper = new DomHelper(engine.SendSLNetMessages, moduleId);
+            var filter = SectionDefinitionExposers.Name.Equal(sectionDefinitionName);
+            var sectionDefinition = domHelper.SectionDefinitions.Read(filter).FirstOrDefault() as CustomSectionDefinition;
+            if (sectionDefinition == null)
+            {
+                engine.ExitFail($"Could not find a SectionDefinition with name '{sectionDefinitionName}'.");
+            }
+
+            // Add the FieldDescriptor & update it on the server
+            sectionDefinition.AddOrReplaceFieldDescriptor(fieldDescriptor);
+            domHelper.SectionDefinitions.Update(sectionDefinition);
+        }
+    }
+}]]></Value>
+      <Message>
+      </Message>
+    </Exe>
+  </Script>
+</DMSScript>
