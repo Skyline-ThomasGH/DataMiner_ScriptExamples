@@ -1,0 +1,47 @@
+<DMSScript options="272" xmlns="http://www.skyline.be/automation">
+  <Name>DOM_GetHistoryForInstanceExample</Name>
+  <Description>This example shows you how you retrieve the history for a DOM instance.</Description>
+  <Type>Automation</Type>
+  <Author>SKYLINE2\ThomasGH</Author>
+  <CheckSets>FALSE</CheckSets>
+  <Folder>
+  </Folder>
+  <Protocols>
+  </Protocols>
+  <Memory>
+  </Memory>
+  <Parameters>
+  </Parameters>
+  <Script>
+    <Exe id="2" type="csharp">
+      <Value><![CDATA[using System;
+using Skyline.DataMiner.Automation;
+using Skyline.DataMiner.Net.Apps.DataMinerObjectModel;
+using Skyline.DataMiner.Net.History;
+using Skyline.DataMiner.Net.Messages.SLDataGateway;
+
+namespace DOM.HistoryExample
+{
+    public class Script
+    {
+        public void Run(Engine engine)
+        {
+            var domInstanceId = new DomInstanceId(Guid.Parse("ac33a271-02f7-4dc6-80b0-fa9c1a5563d9"));
+            var domHelper = new DomHelper(engine.SendSLNetMessages, "my_dom_module");
+
+            var filter = HistoryChangeExposers.SubjectID.Equal(domInstanceId.ToFileFriendlyString());
+            var history = domHelper.DomInstanceHistory.Read(filter);
+
+            engine.GenerateInformation($"Found {history.Count} history records for subject: '{domInstanceId.ToFileFriendlyString()}'");
+            foreach (var change in history)
+            {
+                engine.GenerateInformation($"{change.SubjectId} - {change.FullUsername} - {change.Changes.Count} changes");
+            }
+        }
+    }
+}]]></Value>
+      <Message>
+      </Message>
+    </Exe>
+  </Script>
+</DMSScript>
