@@ -1,0 +1,119 @@
+<DMSScript options="272" xmlns="http://www.skyline.be/automation">
+  <Name>AUTOMATION_AbortRunningScripts</Name>
+  <Description>Aborts all script instances that are running the script with the given name.</Description>
+  <Type>Automation</Type>
+  <Author>SKYLINE2\ThomasGH</Author>
+  <CheckSets>FALSE</CheckSets>
+  <Folder>
+  </Folder>
+  <Protocols>
+  </Protocols>
+  <Memory>
+  </Memory>
+  <Parameters>
+    <ScriptParameter id="1" type="string" values="">
+      <Description>ScriptToAbort</Description>
+    </ScriptParameter>
+  </Parameters>
+  <Script>
+    <Exe id="2" type="csharp">
+      <Value><![CDATA[using System;
+using System.Collections.Generic;
+using Skyline.DataMiner.Automation;
+using Skyline.DataMiner.Net.Helper;
+using Skyline.DataMiner.Net.Messages;
+using Skyline.DataMiner.Net.Messages.Advanced;
+
+namespace AutomationAbortScriptExample
+{
+    /// <summary>
+    /// This sample script checks all currently running scripts and aborts those that match the name defined in 'ScriptToAbort' input parameter.
+    /// Aborting a script causes an internal 'Aborted' flag to be set which will cause the script to stop using an 'ScriptAbortException'
+    /// the next time the script interfaces with the engine object. (E.g. wants to send a message to the server)
+    ///
+    /// Note that this uses internal calls, and we do not recommend using these, as they are not officially supported and we cannot guarantee that it
+    /// will still work in the future. As a rule, you should avoid using SLNet calls, as these are subject to change without notice.
+    /// We recommend to instead always use the correct UI or automation options provided in DataMiner Automation or through our web API.
+    /// </summary>
+    public class Script
+    {
+        private Engine _engine;
+
+        public void Run(Engine engine)
+        {
+            _engine = engine;
+
+            try
+            {
+                InnerRun();
+            }
+            catch (ScriptAbortException e)
+            {
+                _engine.GenerateInformation(e.ToString());
+                throw;
+            }
+            catch (Exception e)
+            {
+                _engine.GenerateInformation(e.ToString());
+            }
+        }
+
+        private void InnerRun()
+        {
+            var scriptToAbort = _engine.GetScriptParam("ScriptToAbort")?.Value;
+            if (scriptToAbort.IsNullOrEmpty())
+            {
+                _engine.ExitFail("No valid script name was given.");
+            }
+
+            _engine.GenerateInformation($"Aborting all running script instances for '{scriptToAbort}'");
+
+            // Get all currently running scripts.
+            var getRunningScriptsMessage = new SetAutomationInfoMessage(31)
+            {
+                Sa = new SA(new[] { "MANAGED_INSTANCES_INFO" })
+            };
+
+            var runningScripts = _engine.SendSLNetSingleResponseMessage(getRunningScriptsMessage) as SetAutomationInfoResponseMessage;
+            if (runningScripts == null)
+            {
+                _engine.ExitFail("Could not retrieve the running scripts.");
+            }
+
+            // Loop over the collection and determine whether we need to abort this instance.
+            var scriptIds = new List<string>();
+            foreach (var runningScript in runningScripts.saRet.Sa)
+            {
+                // Split script info (5;2024-03-08 09:44:08;2024-03-08 09:54:08;MyScriptName)
+                var scriptInfo = runningScript.Split(';');
+
+                var scriptId = scriptInfo[0];
+                var startTime = scriptInfo[1];
+                var endTime = scriptInfo[2];
+                var scriptName = scriptInfo[3];
+
+                if (scriptName.Equals(scriptToAbort))
+                {
+                    scriptIds.Add(scriptId);
+                }
+            }
+
+            // Loop over all script IDs that we need to abort & send the abort request.
+            foreach (var scriptId in scriptIds)
+            {
+                _engine.GenerateInformation($"Aborting script with script ID {scriptId}");
+
+                var abortMessage = new SetAutomationInfoMessage(31)
+                {
+                    Sa = new SA(new[] { "MANAGED_INSTANCE_KILL", scriptId })
+                };
+                _engine.SendSLNetSingleResponseMessage(abortMessage);
+            }
+        }
+    }
+}]]></Value>
+      <Message>
+      </Message>
+    </Exe>
+  </Script>
+</DMSScript>
