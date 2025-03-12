@@ -1,0 +1,71 @@
+<DMSScript options="272" xmlns="http://www.skyline.be/automation">
+  <Name>DOM_UpdateFieldDescriptorProperty</Name>
+  <Description>This script updates the ID format of the AutoIncrementFieldDescriptor but can be adjusted to change any property on an FieldDescriptor.</Description>
+  <Type>Automation</Type>
+  <Author>SKYLINE2\ThomasGH</Author>
+  <CheckSets>FALSE</CheckSets>
+  <Folder>
+  </Folder>
+  <Protocols>
+  </Protocols>
+  <Memory>
+  </Memory>
+  <Parameters>
+  </Parameters>
+  <Script>
+    <Exe id="2" type="csharp">
+      <Value><![CDATA[using System;
+using System.Linq;
+using Skyline.DataMiner.Automation;
+using Skyline.DataMiner.Net.Apps.DataMinerObjectModel;
+using Skyline.DataMiner.Net.Sections;
+
+namespace DOM.UpdateFieldDescriptorExample
+{
+    public class Script
+    {
+        public void Run(Engine engine)
+        {
+            var sectionDefinitionId = new SectionDefinitionID(Guid.Parse("853136fc-1b49-42d3-a8d4-bade4bcf3342"));
+            var fieldDescriptorId = new FieldDescriptorID(Guid.Parse("5ee0fa18-7136-42e4-9e39-ad680591b741"));
+            var moduleId = "my_module";
+
+            var domHelper = new DomHelper(engine.SendSLNetMessages, moduleId);
+
+            // Get the SectionDefinition
+            var filter = SectionDefinitionExposers.ID.Equal(sectionDefinitionId);
+            var sectionDefinition = domHelper.SectionDefinitions.Read(filter).FirstOrDefault();
+            if (sectionDefinition == null)
+            {
+                engine.ExitFail("The SectionDefinition was not found.");
+                return;
+            }
+
+            // Find the FieldDescriptor
+            var fieldDescriptor = sectionDefinition.GetAllFieldDescriptors().FirstOrDefault(one => one.ID.Equals(fieldDescriptorId));
+            if (fieldDescriptor == null)
+            {
+                engine.ExitFail("The FieldDescriptor was not found.");
+                return;
+            }
+
+            // Check the FieldDescriptor type
+            if (!(fieldDescriptor is AutoIncrementFieldDescriptor incrementFieldDescriptor))
+            {
+                engine.ExitFail("The FieldDescriptor was not an AutoIncrementFieldDescriptor");
+                return;
+            }
+
+            // Change the ID format
+            incrementFieldDescriptor.IDFormat = $"{DateTime.Now.Year}-{{0:000000}}";
+
+            // Update the SectionDefinition on server
+            domHelper.SectionDefinitions.Update(sectionDefinition);
+        }
+    }
+}]]></Value>
+      <Message>
+      </Message>
+    </Exe>
+  </Script>
+</DMSScript>
